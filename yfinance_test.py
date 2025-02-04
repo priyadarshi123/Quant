@@ -3,20 +3,20 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 
-stocks  = ["AMZN","MSFT","META","GOOG"]
-start = dt.datetime.today() - dt.timedelta(3650)
+tickers  = ["AMZN","MSFT","GOOG"]
+start = dt.datetime.today() - dt.timedelta(36)
 end = dt.datetime.today()
 cl_price = pd.DataFrame()   ##Dataframe to store closing price
 
 ohlcv_data = {}  ## Empty dictionary filled with dataframe
 
-for ticker in stocks:
-    cl_price[ticker]= yf.download(ticker,start,end)["Close"]
+for ticker in tickers:
+    temp= yf.download(ticker,period="1mo",interval="15m")
     #print(cl_price)
+    # dropping Nan values
+    temp.dropna(axis=0, inplace=True, how='any')
+    ohlcv_data[ticker] = temp
 
-print(cl_price)
-
-print("wait.......")
 
 #fill NaN values
 
@@ -26,15 +26,13 @@ print("wait.......")
 
 #print(cl_price)
 
-#dropping Nan values
 
-cl_price.dropna(axis=0,inplace=True,how='any')
 
-print(cl_price)
+#print(cl_price)
 
 #cl_price.describe()
 
-daily_return = cl_price.pct_change()
+#daily_return = cl_price.pct_change()
 #print(cl_price/cl_price.shift(1) - 1) #same as above
 
 #print(daily_return.mean())
@@ -62,12 +60,29 @@ daily_return = cl_price.pct_change()
 #https://matplotlib.org/tutorials/introductory/lifecycle.html
 
 
-fig, ax = plt.subplots()
+#fig, ax = plt.subplots()
 
 
-ax.set(title='Mean daily return of stocks', xlabel = 'Stocks', ylabel = 'Mean REurn')
-print(plt.style.available)  # to see avaialble style
-plt.style.use("ggplot")
-plt.bar(x=daily_return.columns,height=daily_return.mean())
+#ax.set(title='Mean daily return of stocks', xlabel = 'Stocks', ylabel = 'Mean REurn')
+#print(plt.style.available)  # to see avaialble style
+#plt.style.use("ggplot")
+#plt.bar(x=daily_return.columns,height=daily_return.mean())
 #plt.bar(x=daily_return.columns,height=daily_return.std())
-plt.show()
+#plt.show()
+
+
+def MACD(DF,a=12,b=26,c=9):
+    df = DF.copy()
+    df["ma_fast"]= df["Close"].ewm(span=a,min_periods=a).mean()  # ewm is exponential weighted mean
+    df["ma_slow"]=df["Close"].ewm(span=b,min_periods=b).mean()
+    df["macd"]=df["ma_fast"]-df["ma_slow"]
+    df["signal"]=df["macd"].ewm(span=c,min_periods=c).mean()
+    return df.loc[:,["macd","signal"]]
+
+
+for ticker in ohlcv_data:
+    ohlcv_data[ticker][["MACD","SIGNAL"]]= MACD(ohlcv_data[ticker])
+
+print("Adding Signals")
+print(ohlcv_data)
+print(type(ohlcv_data))
